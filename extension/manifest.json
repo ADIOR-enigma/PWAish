@@ -2,7 +2,7 @@
   "description": "Website as an App",
   "manifest_version": 2,
   "name": "WebApp Installer",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "homepage_url": "https://github.com/ADIOR-enigma/PWAish",
   "icons": {
     "16": "icon/icon_w.svg",
@@ -34,11 +34,6 @@
       "run_at": "document_start"
     }
   ],
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": false,
-    "browser_style": true
-  },
   "commands": {
     "popupWindow": {
       "description": "Popup window or pop back into browser"

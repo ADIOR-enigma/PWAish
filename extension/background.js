@@ -1,17 +1,7 @@
-let defaultPreference = {
-  defaultPosition: 0,
-  windowPositionLeft: 0,
-  windowPositionTop: 0,
-  windowWidth: 500,
-  windowHeight: 400,
-  openThisLink: false,
-  moveThisPage: false,
-  moveThisTab: false,
-  iconColor: 1, //0:black, 1:white
-  nativeHostName: "popupwindow_desktop",
-  version: 8,
-};
-let preferences = {};
+const NATIVE_HOST_NAME = "popupwindow_desktop";
+const DEFAULT_WINDOW_WIDTH = 500;
+const DEFAULT_WINDOW_HEIGHT = 400;
+
 let installedApps = new Set();
 let winMapping = new Map();
 let popupMapping = new Map();
@@ -44,7 +34,7 @@ const markAppInstalled = (url) => {
 
 const syncInstalledAppsWithNative = () => {
   chrome.runtime.sendNativeMessage(
-    preferences.nativeHostName,
+    NATIVE_HOST_NAME,
     { action: "listInstalled" },
     (response) => {
       if (
@@ -66,51 +56,14 @@ const syncInstalledAppsWithNative = () => {
   );
 };
 
-const storageChangeHandler = (changes, area) => {
-  if (area === "local") {
-    let changedItems = Object.keys(changes);
-    for (let item of changedItems) {
-      preferences[item] = changes[item].newValue;
-      if (item === "iconColor") {
-        updateAllPageActions();
-      }
-    }
-  }
-};
-
-const loadPreference = () => {
+const loadInstalledApps = () => {
   chrome.storage.local.get((results) => {
     if (typeof results.length === "number" && results.length > 0) {
       results = results[0];
     }
-    if (Array.isArray(results.installedApps)) {
+    if (results && Array.isArray(results.installedApps)) {
       installedApps = new Set(results.installedApps);
     }
-    if (!results.version) {
-      preferences = defaultPreference;
-      chrome.storage.local.set(defaultPreference, (res) => {
-        chrome.storage.onChanged.addListener(storageChangeHandler);
-      });
-    } else {
-      preferences = Object.assign({}, defaultPreference, results);
-      chrome.storage.onChanged.addListener(storageChangeHandler);
-    }
-
-    if (preferences.version !== defaultPreference.version) {
-      let update = {};
-      let needUpdate = false;
-      for (let p in defaultPreference) {
-        if (preferences[p] === undefined) {
-          update[p] = defaultPreference[p];
-          needUpdate = true;
-        }
-      }
-      if (needUpdate || preferences.version !== defaultPreference.version) {
-        update.version = defaultPreference.version;
-        chrome.storage.local.set(update);
-      }
-    }
-
     syncInstalledAppsWithNative();
   });
 };
@@ -119,10 +72,45 @@ if (chrome.runtime && chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(syncInstalledAppsWithNative);
 }
 
+const isDarkMode = () => {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+};
+
+if (typeof window !== "undefined" && window.matchMedia) {
+  let mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const onThemeChange = () => {
+    updateAllPageActions();
+  };
+  if (mediaQuery.addEventListener) {
+    mediaQuery.addEventListener("change", onThemeChange);
+  } else if (mediaQuery.addListener) {
+    mediaQuery.addListener(onThemeChange);
+  }
+}
+
+if (
+  typeof browser !== "undefined" &&
+  browser.theme &&
+  browser.theme.onUpdated
+) {
+  browser.theme.onUpdated.addListener(() => updateAllPageActions());
+} else if (
+  typeof chrome !== "undefined" &&
+  chrome.theme &&
+  chrome.theme.onUpdated
+) {
+  chrome.theme.onUpdated.addListener(() => updateAllPageActions());
+}
+
 const setPageActionIcon = (tabId, installed = false) => {
+  let dark = isDarkMode();
   let iconFile = installed
-    ? (preferences.iconColor === 0 ? "icon/popup.svg" : "icon/popup_w.svg")
-    : (preferences.iconColor === 0 ? "icon/icon.svg" : "icon/icon_w.svg");
+    ? (dark ? "icon/popup_w.svg" : "icon/popup.svg")
+    : (dark ? "icon/icon_w.svg" : "icon/icon.svg");
   let details = {
     path: {
       16: iconFile,
@@ -308,12 +296,12 @@ const buildInstallPayload = async (tab) => {
     manifestUrl: manifestUrl,
     launcherUrl: buildLauncherUrl(
       startUrl,
-      preferences.windowWidth,
-      preferences.windowHeight,
+      DEFAULT_WINDOW_WIDTH,
+      DEFAULT_WINDOW_HEIGHT,
     ),
     window: {
-      width: preferences.windowWidth,
-      height: preferences.windowHeight,
+      width: DEFAULT_WINDOW_WIDTH,
+      height: DEFAULT_WINDOW_HEIGHT,
     },
   };
 };
@@ -321,7 +309,7 @@ const buildInstallPayload = async (tab) => {
 const sendNativeInstall = (payload) =>
   new Promise((resolve, reject) => {
     chrome.runtime.sendNativeMessage(
-      preferences.nativeHostName,
+      NATIVE_HOST_NAME,
       payload,
       (response) => {
         if (chrome.runtime.lastError) {
@@ -387,8 +375,8 @@ const popupWindow = (
   callback,
 ) => {
   let screen = window.screen;
-  let width = winWidth ?? preferences.windowWidth;
-  let height = winHeight ?? preferences.windowHeight;
+  let width = winWidth ?? DEFAULT_WINDOW_WIDTH;
+  let height = winHeight ?? DEFAULT_WINDOW_HEIGHT;
 
   let top = screen.availTop !== undefined ? screen.availTop : screen.top;
   let left = screen.availLeft !== undefined ? screen.availLeft : screen.left;
@@ -398,28 +386,10 @@ const popupWindow = (
     screen.availWidth !== undefined ? screen.availWidth : screen.width;
   let sHeight =
     screen.availHeight !== undefined ? screen.availHeight : screen.height;
-  if (preferences.defaultPosition === 0) {
-    top = sTop + Math.round((sHeight - height) / 2);
-    left = sLeft + Math.round((sWidth - width) / 2);
-  } else if (preferences.defaultPosition === 5) {
-    top = preferences.windowPositionTop;
-    left = preferences.windowPositionLeft;
-  } else {
-    if (
-      preferences.defaultPosition === 2 ||
-      preferences.defaultPosition === 4
-    ) {
-      top = sTop + sHeight - height;
-      if (top < sTop) top = sTop;
-    }
-    if (
-      preferences.defaultPosition === 3 ||
-      preferences.defaultPosition === 4
-    ) {
-      left = sLeft + sWidth - width;
-      if (left < sLeft) left = sLeft;
-    }
-  }
+
+  top = sTop + Math.round((sHeight - height) / 2);
+  left = sLeft + Math.round((sWidth - width) / 2);
+
   if (winTop !== undefined) {
     top = winTop;
   }
@@ -626,7 +596,7 @@ function addToPopupMapping(window, originalWindowId) {
 }
 
 window.addEventListener("DOMContentLoaded", (event) => {
-  loadPreference();
+  loadInstalledApps();
 });
 
 chrome.commands.onCommand.addListener((command) => {

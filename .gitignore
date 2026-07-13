@@ -17,3 +17,4 @@ Thumbs.db
 *.xpi
 *.zip
 dist
+check_version_update.txt
