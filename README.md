@@ -32,30 +32,44 @@ https://github.com/user-attachments/assets/0abe172e-9984-4510-9bc4-cdd6030c370c
 
 ### 1. Install the Native Messaging Host (Linux)
 
-The native messaging host is required to create Linux desktop entries.
+The native messaging host is required to create Linux desktop entries. Installation is user-local (`~/.local`) and does not require root/sudo privileges.
 
 #### Automated Installation
 
 Install directly using `curl`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/install.sh | bash
 ```
 
 Or, if you have cloned this repository locally:
 
 ```bash
-sudo ./install.sh
+./install.sh
 ```
 
 This installs:
-- Python installer script: `/usr/lib/webappinst/popupwindow_desktop.py`
-- Native messaging host manifest: `/lib/mozilla/native-messaging-hosts/popupwindow_desktop.json` (shared across Firefox, Zen Browser, Floorp, and LibreWolf)
+- Python installer script: `~/.local/lib/webappinst/popupwindow_desktop.py`
+- Native messaging host manifest: `~/.mozilla/native-messaging-hosts/popupwindow_desktop.json` (shared across Firefox, Zen Browser, Floorp, and LibreWolf)
 
 #### Manual Installation
 
-1. Copy `native/popupwindow_desktop.py` to `/usr/lib/webappinst/popupwindow_desktop.py` and make it executable (`sudo chmod 755 /usr/lib/webappinst/popupwindow_desktop.py`).
-2. Copy `native/popupwindow_desktop.json` to `/lib/mozilla/native-messaging-hosts/popupwindow_desktop.json` (`sudo chmod 644 /lib/mozilla/native-messaging-hosts/popupwindow_desktop.json`).
+1. Create target directories:
+   ```bash
+   mkdir -p ~/.local/lib/webappinst
+   mkdir -p ~/.mozilla/native-messaging-hosts
+   ```
+2. Copy `native/popupwindow_desktop.py` to `~/.local/lib/webappinst/popupwindow_desktop.py` and make it executable:
+   ```bash
+   cp native/popupwindow_desktop.py ~/.local/lib/webappinst/popupwindow_desktop.py
+   chmod 755 ~/.local/lib/webappinst/popupwindow_desktop.py
+   ```
+3. Copy `native/popupwindow_desktop.json` to `~/.mozilla/native-messaging-hosts/popupwindow_desktop.json` and update its `"path"` to point to your script:
+   ```bash
+   cp native/popupwindow_desktop.json ~/.mozilla/native-messaging-hosts/popupwindow_desktop.json
+   sed -i "s|\"path\": \".*\"|\"path\": \"$HOME/.local/lib/webappinst/popupwindow_desktop.py\"|" ~/.mozilla/native-messaging-hosts/popupwindow_desktop.json
+   chmod 644 ~/.mozilla/native-messaging-hosts/popupwindow_desktop.json
+   ```
 
 ---
 
@@ -86,14 +100,14 @@ export PWAISH_BROWSER=floorp
 
 ## Uninstallation
 
-To remove the native messaging host and clean up installed system files:
+To remove the native messaging host and clean up installed files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/uninstall.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/uninstall.sh | bash
 ```
 
 Or from a local clone:
 
 ```bash
-sudo ./uninstall.sh
+./uninstall.sh
 ```
