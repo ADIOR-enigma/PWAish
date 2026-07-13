@@ -63,7 +63,7 @@ This installs:
 
 Because `webappinst.xpi` is a standard XPI package, you can install it directly into **any Gecko-based browser** (Firefox, Zen Browser, Floorp, LibreWolf, etc.):
 
-1. Go to the [Releases page](https://github.com/ADIOR-enigma/PWAish/releases/latest) and click on **`webappinst.xpi`** to download and install it directly in your browser.
+1. Go to the [Releases page](https://github.com/ADIOR-enigma/PWAish/releases/latest) and click on **`webappinst.xpi`** to install it directly in your browser.
    - *Alternatively, you can build from source locally using `npm run build` and install `dist/webappinst.xpi`.*
 2. Once installed, visit any web application to see the **Install the app** icon in your address bar.
 
