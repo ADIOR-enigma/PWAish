@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "webappinst@adior": {
+      "updates": [
+        {
+          "version": "0.1.6",
+          "update_link": "https://github.com/ADIOR-enigma/PWAish/releases/download/v0.1.6/webappinst.xpi"
+        }
+      ]
+    }
+  }
+}

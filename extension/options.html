@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <link rel="stylesheet" type="text/css" href="options.css" />
+        <script type="text/javascript" src="options.js"></script>
+        <title></title>
+    </head>
+    <body>
+        <div>
+            <div style="display: inline-block">
+                <div class="itemDiv">
+                    <label data-l10n-id="defaultPosition"
+                        >Default pop-up window position</label
+                    >
+                    <select id="defaultPosition" type="option">
+                        <option value="0" data-l10n-id="center">Center</option>
+                        <option value="1" data-l10n-id="topLeft">
+                            Top left corner
+                        </option>
+                        <option value="2" data-l10n-id="bottomLeft">
+                            Bottom left corner
+                        </option>
+                        <option value="3" data-l10n-id="topRight">
+                            Top right corner
+                        </option>
+                        <option value="4" data-l10n-id="bottomRight">
+                            Bottom right corner
+                        </option>
+                        <option value="5" data-l10n-id="customPosition">
+                            Custom position
+                        </option>
+                    </select>
+                    <label
+                        class="windowPosition"
+                        data-l10n-id="windowPositionLeft"
+                        >Left</label
+                    >
+                    <input
+                        class="windowPosition"
+                        type="number"
+                        id="windowPositionLeft"
+                        min="0"
+                    />
+                    <label
+                        class="windowPosition"
+                        data-l10n-id="windowPositionTop"
+                        >Top</label
+                    >
+                    <input
+                        class="windowPosition"
+                        type="number"
+                        id="windowPositionTop"
+                        min="0"
+                    />
+                </div>
+
+                <div class="itemDiv">
+                    <label data-l10n-id="windowWidth"
+                        >Default pop-up window width</label
+                    >
+                    <input type="number" id="windowWidth" min="30" />
+                </div>
+                <div class="itemDiv">
+                    <label data-l10n-id="windowHeight"
+                        >Default pop-up window height</label
+                    >
+                    <input type="number" id="windowHeight" min="30" />
+                </div>
+
+                <div class="itemDiv">
+                    <div class="col">
+                        <label data-l10n-id="pwaInstallSection"
+                            >PWA desktop installation</label
+                        >
+                    </div>
+                    <div class="col">
+                        <div>
+                            <label
+                                for="nativeHostName"
+                                data-l10n-id="nativeHostName"
+                                >Native messaging host name</label
+                            >
+                            <input type="text" id="nativeHostName" />
+                        </div>
+                        <p data-l10n-id="nativeHostHelp">
+                            The native host receives install requests and
+                            creates desktop entries.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="itemDiv">
+                    <div id="iconColor" type="radioGroup">
+                        <label data-l10n-id="iconColor"
+                            >Toolbar button icon color</label
+                        >
+                        <input
+                            type="radio"
+                            id="iconColorBlack"
+                            name="iconColor"
+                            value="0"
+                        />
+                        <label
+                            for="iconColorBlack"
+                            data-l10n-id="iconColorBlack"
+                            >Black</label
+                        >
+                        <input
+                            type="radio"
+                            id="iconColorWhite"
+                            name="iconColor"
+                            value="1"
+                        />
+                        <label
+                            for="iconColorWhite"
+                            data-l10n-id="iconColorWhite"
+                            >White</label
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

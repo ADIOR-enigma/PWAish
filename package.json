@@ -1,0 +1,9 @@
+{
+  "name": "webappinst",
+  "version": "0.1.6",
+  "description": "Move tab to standalone window, without tabs bar, navigation bar and bookmark bar UI.",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p dist && rm -f dist/webappinst.xpi dist/webappinst.zip && cd extension && zip -r9DX ../dist/webappinst.xpi * -x \"*.DS_Store\" && cd .. && cp dist/webappinst.xpi dist/webappinst.zip"
+  }
+}

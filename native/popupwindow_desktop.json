@@ -1,0 +1,7 @@
+{
+  "name": "popupwindow_desktop",
+  "description": "PopupWindow PWA desktop entry installer",
+  "path": "/usr/lib/webappinst/popupwindow_desktop.py",
+  "type": "stdio",
+  "allowed_extensions": ["webappinst@adior"]
+}

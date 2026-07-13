@@ -1,0 +1,70 @@
+{
+  "description": "Website as an App",
+  "manifest_version": 2,
+  "name": "WebApp Installer",
+  "version": "0.1.6",
+  "homepage_url": "https://github.com/ADIOR-enigma/PWAish",
+  "icons": {
+    "16": "icon/icon_w.svg",
+    "32": "icon/icon_w.svg",
+    "48": "icon/icon_w.svg",
+    "64": "icon/icon_w.svg",
+    "96": "icon/icon_w.svg"
+  },
+  "developer": {
+    "name": "Adior Enigmac",
+    "url": "https://github.com/ADIOR-enigma/PWAish"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "nativeMessaging",
+    "tabs",
+    "http://*/*",
+    "https://*/*",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["shortcut.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false,
+    "browser_style": true
+  },
+  "commands": {
+    "popupWindow": {
+      "description": "Popup window or pop back into browser"
+    }
+  },
+  "page_action": {
+    "browser_style": true,
+    "default_title": "Install the app",
+    "default_icon": "icon/icon_w.svg",
+    "show_matches": ["http://*/*", "https://*/*"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "webappinst@adior",
+      "update_url": "https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/updates.json",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "web_accessible_resources": [
+    "launcher.html",
+    "icon/icon.svg",
+    "icon/icon_w.svg",
+    "icon/popup.svg",
+    "icon/popup_w.svg"
+  ]
+}
