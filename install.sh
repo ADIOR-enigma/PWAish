@@ -64,7 +64,8 @@ if [ -d "/usr/lib/mozilla/native-messaging-hosts" ] && [ ! -L "/lib" ]; then
 fi
 
 echo "================================================================="
-echo "PopupWindow native host successfully installed!"
+echo "PWAish native host successfully installed!"
 echo "  Python Script : $PY_TARGET"
 echo "  JSON Manifest : $JSON_TARGET"
 echo "================================================================="
+

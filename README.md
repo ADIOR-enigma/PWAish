@@ -11,8 +11,7 @@ A seamless Progressive Web App (PWA) installer and desktop launcher for Firefox 
 - **URL Bar PWA Installer**: Displays an **Install the app** action icon directly in the address bar on HTTP and HTTPS sites.
 - **Manifest & Icon Discovery**: Automatically discovers and parses Web App Manifests (`manifest.json`) to extract app titles, start URLs, and high-resolution icons.
 - **Native Desktop Integration**: Uses Firefox native messaging to create standard Linux `.desktop` launchers in `~/.local/share/applications`.
-- **Standalone Chromeless Windows**: Opens web applications in clean, standalone windows without tab bars, navigation bars, or bookmark bars for an authentic desktop application feel.
-- **Gecko & Zen Browser Support**: Automatically detects and prioritizes [Zen Browser](https://zen-browser.app/) when available, falling back to Firefox.
+- **Multi-Browser Auto-Detection**: Fully supports [Firefox](https://www.mozilla.org/firefox/), [Zen Browser](https://zen-browser.app/), [Floorp](https://floorp.app/), and [LibreWolf](https://librewolf.net/). PWAish automatically inspects the calling process so PWAs installed from any browser open natively in that same browser.
 
 ---
 
@@ -47,7 +46,7 @@ sudo ./install.sh
 
 This installs:
 - Python installer script: `/usr/lib/webappinst/popupwindow_desktop.py`
-- Native messaging host manifest: `/lib/mozilla/native-messaging-hosts/popupwindow_desktop.json`
+- Native messaging host manifest: `/lib/mozilla/native-messaging-hosts/popupwindow_desktop.json` (shared across Firefox, Zen Browser, Floorp, and LibreWolf)
 
 #### Manual Installation
 
@@ -66,13 +65,16 @@ This installs:
 
 ## Configuration
 
-By default, desktop shortcuts launch using `zen-browser` if installed on your system, or `firefox` otherwise.
+PWAish automatically detects which browser (`firefox`, `zen-browser`, `floorp`, or `librewolf`) invoked the install request and configures `.desktop` launchers to use that browser executable.
 
-You can override the executable used when launching installed web apps by setting the `POPUPWINDOW_BROWSER` environment variable:
+You can optionally override the browser used for PWA launches:
 
+1. **Environment variable override**: Set `PWAISH_BROWSER` or `POPUPWINDOW_BROWSER` when launching:
 ```bash
-export POPUPWINDOW_BROWSER=/path/to/custom/firefox
+export PWAISH_BROWSER=floorp
 ```
+2. **System-wide override**: Edit `/etc/webappinst/browser` to contain `firefox`, `zen-browser`, `floorp`, or `librewolf`.
+3. **Per-user override**: Create `~/.config/webappinst/browser` with your preferred browser executable.
 
 ---
 

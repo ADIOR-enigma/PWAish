@@ -56,9 +56,9 @@ def download_icon(url, icon_dir, base_name):
         return str(icon_path)
 
 
-def save_app_icon(icon_url, base_name):
+def save_app_icon(icon_url, base_name, fallback_icon="firefox"):
     if not icon_url or not isinstance(icon_url, str):
-        return "zen-browser"
+        return fallback_icon
     if "://" not in icon_url and not icon_url.startswith("data:"):
         return icon_url
 
@@ -88,7 +88,86 @@ def save_app_icon(icon_url, base_name):
     except Exception:
         pass
 
-    return "zen-browser"
+    return fallback_icon
+
+
+def detect_calling_browser():
+    pid = os.getppid()
+    seen_pids = set()
+    while pid > 1 and pid not in seen_pids:
+        seen_pids.add(pid)
+        try:
+            exe_path = ""
+            try:
+                exe_path = os.readlink(f"/proc/{pid}/exe").lower()
+            except Exception:
+                pass
+
+            cmdline = ""
+            try:
+                cmdline = (
+                    Path(f"/proc/{pid}/cmdline")
+                    .read_text(errors="ignore")
+                    .replace("\x00", " ")
+                    .lower()
+                )
+            except Exception:
+                pass
+
+            text_to_search = f"{exe_path} {cmdline}"
+            if "zen" in text_to_search and (
+                "zen-browser" in text_to_search
+                or "/zen" in text_to_search
+                or "zen-bin" in text_to_search
+            ):
+                return "zen-browser"
+            if "floorp" in text_to_search:
+                return "floorp"
+            if "librewolf" in text_to_search:
+                return "librewolf"
+            if "firefox" in text_to_search:
+                return "firefox"
+
+            stat_content = Path(f"/proc/{pid}/stat").read_text(errors="ignore")
+            rparen = stat_content.rfind(")")
+            if rparen != -1:
+                parts = stat_content[rparen + 2 :].split()
+                pid = int(parts[1])
+            else:
+                break
+        except Exception:
+            break
+    return None
+
+
+def get_browser():
+    env_browser = (
+        os.environ.get("PWAISH_BROWSER") or os.environ.get("POPUPWINDOW_BROWSER")
+    )
+    if env_browser and env_browser.strip():
+        return env_browser.strip()
+
+    caller = detect_calling_browser()
+    if caller:
+        return caller
+
+    for cfg_path in (
+        Path.home() / ".config" / "webappinst" / "browser",
+        Path("/etc/webappinst/browser"),
+    ):
+        if cfg_path.exists():
+            try:
+                cfg = cfg_path.read_text(encoding="utf-8").strip()
+                if cfg:
+                    return cfg
+            except Exception:
+                pass
+
+    for b in ("firefox", "zen-browser", "floorp", "librewolf"):
+        if shutil.which(b):
+            return b
+
+    return "firefox"
 
 
 def install(payload):
@@ -99,15 +178,13 @@ def install(payload):
     desktop_stem = f"popupwindow-{safe_name(parsed.netloc)}-{safe_name(title)}"
     desktop_id = f"{desktop_stem}.desktop"
     desktop_path = APP_DIR / desktop_id
-    raw_icon = payload.get("iconUrl") or "zen-browser"
-    icon = save_app_icon(raw_icon, desktop_stem)
+    browser_cmd = get_browser()
+    browser_exec = shutil.which(browser_cmd) or browser_cmd
+    fallback_icon = os.path.basename(browser_cmd)
+    raw_icon = payload.get("iconUrl") or fallback_icon
+    icon = save_app_icon(raw_icon, desktop_stem, fallback_icon=fallback_icon)
     launcher_url = payload.get("launcherUrl") or start_url
-    browser = (
-        os.environ.get("POPUPWINDOW_BROWSER")
-        or shutil.which("zen-browser")
-        or "zen-browser"
-    )
-    command = f"{json.dumps(browser)} {json.dumps(launcher_url)}"
+    command = f"{json.dumps(browser_exec)} {json.dumps(launcher_url)}"
     desktop_path.write_text(
         "[Desktop Entry]\n"
         "Version=1.0\n"

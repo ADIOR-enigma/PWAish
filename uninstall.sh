@@ -30,5 +30,6 @@ if [ -d "$PY_DIR" ] && [ -z "$(ls -A "$PY_DIR" 2>/dev/null)" ]; then
 fi
 
 echo "================================================================="
-echo "PopupWindow native host successfully uninstalled!"
+echo "PWAish native host successfully uninstalled!"
 echo "================================================================="
+
