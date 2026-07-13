@@ -1,8 +1,15 @@
+
+
+
+
+
 # PWAish
 
 A seamless Progressive Web App (PWA) installer and desktop launcher for Firefox and Gecko-based browsers on Linux [tested on arch].
 
 **PWAish** brings native-like PWA installation to Firefox. Instead of ordinary browser tabs, web apps installed through PWAish launch as standalone, chromeless desktop applications complete with native Linux `.desktop` entries and application icons.
+
+https://github.com/user-attachments/assets/bb5ae562-4c2b-4536-ba61-6df2f392aef7
 
 ---
 
