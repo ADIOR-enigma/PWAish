@@ -2,7 +2,7 @@
   "description": "Website as an App",
   "manifest_version": 2,
   "name": "WebApp Installer",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "homepage_url": "https://github.com/ADIOR-enigma/PWAish",
   "icons": {
     "16": "icon/icon_w.svg",
@@ -48,7 +48,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "webappinst@adior",
-      "update_url": "https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/updates.json",
+      "update_url": "https://adior-enigma.github.io/PWAish/updates.json",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
         "required": ["none"]
