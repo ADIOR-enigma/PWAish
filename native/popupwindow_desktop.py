@@ -91,17 +91,34 @@ def save_app_icon(icon_url, base_name, fallback_icon="firefox"):
     return fallback_icon
 
 
+def resolve_zen_browser(exe_path=""):
+    if shutil.which("zen"):
+        return "zen"
+    if shutil.which("zen-browser"):
+        return "zen-browser"
+    if exe_path:
+        if exe_path.endswith("-bin"):
+            launcher = exe_path[:-4]
+            if os.path.isfile(launcher) and os.access(launcher, os.X_OK):
+                return launcher
+        if os.path.isfile(exe_path) and os.access(exe_path, os.X_OK):
+            return exe_path
+    return "zen"
+
+
 def detect_calling_browser():
     pid = os.getppid()
     seen_pids = set()
     while pid > 1 and pid not in seen_pids:
         seen_pids.add(pid)
         try:
-            exe_path = ""
+            exe_path_raw = ""
             try:
-                exe_path = os.readlink(f"/proc/{pid}/exe").lower()
+                exe_path_raw = os.readlink(f"/proc/{pid}/exe")
             except Exception:
                 pass
+
+            exe_path_lower = exe_path_raw.lower()
 
             cmdline = ""
             try:
@@ -114,18 +131,35 @@ def detect_calling_browser():
             except Exception:
                 pass
 
-            text_to_search = f"{exe_path} {cmdline}"
+            text_to_search = f"{exe_path_lower} {cmdline}"
             if "zen" in text_to_search and (
                 "zen-browser" in text_to_search
                 or "/zen" in text_to_search
                 or "zen-bin" in text_to_search
             ):
-                return "zen-browser"
+                return resolve_zen_browser(exe_path_raw)
             if "floorp" in text_to_search:
                 return "floorp"
             if "librewolf" in text_to_search:
                 return "librewolf"
+            # Check for non-standard Firefox installs (dev edition, nightly, etc.)
+            # before falling back to the generic 'firefox' name, so we return
+            # the real executable path rather than whatever `which firefox` finds.
             if "firefox" in text_to_search:
+                # Prefer the named wrapper (e.g. firefox-developer-edition) over
+                # the internal binary (/usr/lib/firefox-developer-edition/firefox)
+                # so the .desktop Exec= line uses the correct entry point.
+                for candidate in (
+                    "firefox-developer-edition",
+                    "firefox-nightly",
+                    "firefox-esr",
+                ):
+                    if candidate in exe_path_lower or candidate in cmdline:
+                        resolved = shutil.which(candidate)
+                        if resolved:
+                            return resolved
+                if exe_path_raw and os.path.isfile(exe_path_raw) and os.access(exe_path_raw, os.X_OK):
+                    return exe_path_raw
                 return "firefox"
 
             stat_content = Path(f"/proc/{pid}/stat").read_text(errors="ignore")
@@ -163,11 +197,20 @@ def get_browser():
             except Exception:
                 pass
 
-    for b in ("firefox", "zen-browser", "floorp", "librewolf"):
+    for b in ("zen", "zen-browser", "firefox-developer-edition", "firefox-nightly", "firefox", "floorp", "librewolf"):
         if shutil.which(b):
             return b
 
     return "firefox"
+
+
+def is_zen_browser(browser_exec):
+    """Return True only when the resolved binary is a Zen Browser build.
+    Zen has our autoconfig installed, which makes --app=<url> open a true
+    standalone PWA window.  Other Firefox-family browsers do not."""
+    name = os.path.basename(browser_exec).lower()
+    path = browser_exec.lower()
+    return "zen" in name or "/zen" in path or "zen-bin" in path
 
 
 def install(payload):
@@ -183,8 +226,17 @@ def install(payload):
     fallback_icon = os.path.basename(browser_cmd)
     raw_icon = payload.get("iconUrl") or fallback_icon
     icon = save_app_icon(raw_icon, desktop_stem, fallback_icon=fallback_icon)
-    launcher_url = payload.get("launcherUrl") or start_url
-    command = f"{json.dumps(browser_exec)} {json.dumps(launcher_url)}"
+
+    is_zen = is_zen_browser(browser_exec)
+    if is_zen:
+        # Zen Browser has autoconfig installed, allowing `--app=<url>` standalone window
+        browser_name = os.path.basename(browser_exec)
+        command = f"{browser_name} --app={json.dumps(start_url)}"
+    else:
+        # Rest of Gecko family uses original extension launcher pattern (`launcherUrl`)
+        launcher_url = payload.get("launcherUrl") or start_url
+        command = f"{json.dumps(browser_exec)} {json.dumps(launcher_url)}"
+
     desktop_path.write_text(
         "[Desktop Entry]\n"
         "Version=1.0\n"
@@ -203,19 +255,22 @@ def install(payload):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    return {"ok": True, "desktopEntry": str(desktop_path)}
+    return {"ok": True, "desktopEntry": str(desktop_path), "isZen": is_zen}
 
 
 def check_installed(payload):
     url = payload.get("url") or payload.get("startUrl") or ""
     parsed = urlparse(url)
     netloc_slug = safe_name(parsed.netloc)
+    browser_cmd = get_browser()
+    browser_exec = shutil.which(browser_cmd) or browser_cmd
+    is_zen = is_zen_browser(browser_exec)
     if not netloc_slug or not APP_DIR.exists():
-        return {"ok": True, "installed": False}
+        return {"ok": True, "installed": False, "isZen": is_zen}
     prefix = f"popupwindow-{netloc_slug}-"
     for entry in APP_DIR.glob(f"{prefix}*.desktop"):
-        return {"ok": True, "installed": True, "desktopEntry": str(entry)}
-    return {"ok": True, "installed": False}
+        return {"ok": True, "installed": True, "desktopEntry": str(entry), "isZen": is_zen}
+    return {"ok": True, "installed": False, "isZen": is_zen}
 
 
 def list_installed():
@@ -227,22 +282,60 @@ def list_installed():
                 for line in content.splitlines():
                     if line.startswith("Exec="):
                         for word in line.split():
-                            word = word.strip('"\'')
-                            if word.startswith(("http://", "https://")):
-                                parsed = urlparse(word)
+                            word_clean = word.strip('"\'')
+                            if word_clean.startswith("--app="):
+                                app_url = word_clean[6:].strip('"\'')
+                                if app_url.startswith(("http://", "https://")):
+                                    parsed = urlparse(app_url)
+                                    if parsed.netloc:
+                                        apps.add(parsed.netloc.lower())
+                            elif word_clean.startswith(("http://", "https://")):
+                                parsed = urlparse(word_clean)
                                 if parsed.netloc:
                                     apps.add(parsed.netloc.lower())
-                            elif "url=" in word:
+                            elif "url=" in word_clean:
                                 import urllib.parse
 
-                                q = urllib.parse.parse_qs(urlparse(word).query)
+                                q = urllib.parse.parse_qs(urlparse(word_clean).query)
                                 if "url" in q and q["url"]:
                                     parsed = urlparse(q["url"][0])
                                     if parsed.netloc:
                                         apps.add(parsed.netloc.lower())
             except Exception:
                 pass
-    return {"ok": True, "installedApps": list(apps)}
+    browser_cmd = get_browser()
+    browser_exec = shutil.which(browser_cmd) or browser_cmd
+    return {
+        "ok": True,
+        "installedApps": list(apps),
+        "isZen": is_zen_browser(browser_exec),
+    }
+
+
+def launch(payload):
+    url = payload.get("url") or payload.get("startUrl")
+    if not url:
+        return {"ok": False, "error": "no url provided"}
+    browser_cmd = get_browser()
+    browser_exec = shutil.which(browser_cmd) or browser_cmd
+    if is_zen_browser(browser_exec):
+        subprocess.Popen(
+            [browser_exec, f"--app={url}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            close_fds=True,
+        )
+    else:
+        launcher_url = payload.get("launcherUrl") or url
+        subprocess.Popen(
+            [browser_exec, launcher_url],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            close_fds=True,
+        )
+    return {"ok": True}
 
 
 def main():
@@ -250,6 +343,8 @@ def main():
     action = payload.get("action")
     if action == "install":
         send_message(install(payload))
+    elif action == "launch":
+        send_message(launch(payload))
     elif action == "checkInstalled":
         send_message(check_installed(payload))
     elif action == "listInstalled":

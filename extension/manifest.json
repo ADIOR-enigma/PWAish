@@ -2,7 +2,7 @@
   "description": "Website as an App",
   "manifest_version": 2,
   "name": "WebApp Installer",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "homepage_url": "https://github.com/ADIOR-enigma/PWAish",
   "icons": {
     "16": "icon/icon_w.svg",

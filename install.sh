@@ -48,5 +48,11 @@ echo "PWAish native host successfully installed!"
 echo "  Python Script : $PY_TARGET"
 echo "  JSON Manifest : $JSON_TARGET"
 echo "================================================================="
+echo ""
+echo "Optional: If using Zen Browser, install the autoconfig for native --app=URL window support:"
+echo "  curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/PWA_for_Zen/install_autoconfig.sh | sudo bash"
+echo ""
 
-echo "Restart Firefox to apply changes."
+echo "Restart all browser instances to apply changes."
+
+

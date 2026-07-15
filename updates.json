@@ -3,8 +3,8 @@
     "webappinst@adior": {
       "updates": [
         {
-          "version": "0.1.9",
-          "update_link": "https://github.com/ADIOR-enigma/PWAish/releases/download/v0.1.9/webappinst@adior.xpi"
+          "version": "0.2.0",
+          "update_link": "https://github.com/ADIOR-enigma/PWAish/releases/download/v0.2.0/webappinst@adior.xpi"
         }
       ]
     }
