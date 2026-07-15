@@ -1,10 +1,14 @@
 const NATIVE_HOST_NAME = "popupwindow_desktop";
-const DEFAULT_WINDOW_WIDTH = 500;
-const DEFAULT_WINDOW_HEIGHT = 400;
+const DEFAULT_WINDOW_WIDTH = 1024;
+const DEFAULT_WINDOW_HEIGHT = 768;
 
 let installedApps = new Set();
 let winMapping = new Map();
 let popupMapping = new Map();
+let pendingAppLaunches = [];
+let appWindowToSourceTab = new Map();
+let currentBrowserIsZen = false;
+let launchedTabs = new Set();
 
 const isInstallableUrl = (url) => /^https?:\/\//i.test(url || "");
 
@@ -42,6 +46,9 @@ const syncInstalledAppsWithNative = () => {
         response &&
         Array.isArray(response.installedApps)
       ) {
+        if (typeof response.isZen === "boolean") {
+          currentBrowserIsZen = response.isZen;
+        }
         installedApps = new Set(response.installedApps);
         chrome.storage.local.set(
           {
@@ -109,8 +116,8 @@ if (
 const setPageActionIcon = (tabId, installed = false) => {
   let dark = isDarkMode();
   let iconFile = installed
-    ? (dark ? "icon/popup_w.svg" : "icon/popup.svg")
-    : (dark ? "icon/icon_w.svg" : "icon/icon.svg");
+    ? dark ? "icon/popup_w.svg" : "icon/popup.svg"
+    : dark ? "icon/icon_w.svg" : "icon/icon.svg";
   let details = {
     path: {
       16: iconFile,
@@ -132,7 +139,7 @@ const setPageActionIcon = (tabId, installed = false) => {
 const setPageActionTitle = (tabId, installed = false) => {
   chrome.pageAction.setTitle({
     tabId: tabId,
-    title: installed ? "Popup as an app" : "Install the app",
+    title: installed ? "Launch as standalone app" : "Install as app",
   });
 };
 
@@ -316,10 +323,37 @@ const sendNativeInstall = (payload) =>
           reject(chrome.runtime.lastError);
           return;
         }
+        if (response && typeof response.isZen === "boolean") {
+          currentBrowserIsZen = response.isZen;
+        }
         resolve(response);
       },
     );
   });
+
+// Launch an installed app natively via zen --app=<url> (handled by autoconfig)
+const launchAppNative = (url, sourceTab) => {
+  if (sourceTab && sourceTab.id) {
+    let now = Date.now();
+    pendingAppLaunches.push({
+      tabId: sourceTab.id,
+      windowId: sourceTab.windowId,
+      url: url,
+      timestamp: now,
+    });
+    pendingAppLaunches = pendingAppLaunches.filter((p) => now - p.timestamp < 30000);
+  }
+  let launcherUrl = buildLauncherUrl(url, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+  chrome.runtime.sendNativeMessage(
+    NATIVE_HOST_NAME,
+    { action: "launch", url, launcherUrl },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error("[PWAish] Native launch error:", chrome.runtime.lastError);
+      }
+    },
+  );
+};
 
 const installCurrentSite = async (tab) => {
   if (!tab || !isInstallableUrl(tab.url) || tab.status !== "complete") return;
@@ -486,16 +520,40 @@ const mergeWindow = (tab, windowId) => {
   }
 };
 
+const checkAndLinkAppWindow = (tab) => {
+  if (!tab || !tab.windowId || !tab.url || !isInstallableUrl(tab.url)) return;
+  if (pendingAppLaunches.length === 0) return;
+
+  let matchIndex = pendingAppLaunches.findIndex((p) => {
+    if (p.windowId === tab.windowId) return false;
+    let pKey = getAppInstallKey(p.url);
+    let tKey = getAppInstallKey(tab.url);
+    return p.url === tab.url || (pKey && pKey === tKey);
+  });
+
+  if (matchIndex !== -1) {
+    let match = pendingAppLaunches[matchIndex];
+    pendingAppLaunches.splice(matchIndex, 1);
+    appWindowToSourceTab.set(tab.windowId, {
+      tabId: match.tabId,
+      windowId: match.windowId,
+    });
+  }
+};
+
+// Page action: install if not installed, native-launch via zen --app= if already installed
 chrome.pageAction.onClicked.addListener((tab) => {
   if (!tab || tab.status !== "complete" || !isInstallableUrl(tab.url)) return;
   if (isAppInstalled(tab.url)) {
-    popupWindow(tab);
+    if (currentBrowserIsZen) {
+      launchAppNative(tab.url, tab);
+    } else {
+      popupWindow(tab);
+    }
   } else {
     installCurrentSite(tab);
   }
 });
-
-let launchedTabs = new Set();
 
 const checkAndLaunchLocalhost = (tabId, urlStr) => {
   if (!urlStr || launchedTabs.has(tabId)) return;
@@ -536,10 +594,15 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === "loading" || changeInfo.url) {
     checkAndLaunchLocalhost(tabId, changeInfo.url || tab.url);
   }
+  if (tab) {
+    checkAndLinkAppWindow(tab);
+  }
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => {
-  launchedTabs.delete(tabId);
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab) {
+    checkAndLinkAppWindow(tab);
+  }
 });
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
@@ -549,13 +612,30 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
   });
 });
 
+chrome.tabs.onRemoved.addListener((tabId) => {
+  launchedTabs.delete(tabId);
+  pendingAppLaunches = pendingAppLaunches.filter((p) => p.tabId !== tabId);
+  for (let [winId, sourceInfo] of appWindowToSourceTab.entries()) {
+    if (sourceInfo.tabId === tabId) {
+      appWindowToSourceTab.delete(winId);
+    }
+  }
+});
+
 chrome.windows.onRemoved.addListener((windowId) => {
   if (winMapping.get(windowId)) {
     winMapping.delete(windowId);
-  } else {
-    if (popupMapping.get(windowId)) {
-      popupMapping.delete(windowId);
-    }
+  } else if (popupMapping.get(windowId)) {
+    popupMapping.delete(windowId);
+  }
+
+  let sourceInfo = appWindowToSourceTab.get(windowId);
+  if (sourceInfo) {
+    appWindowToSourceTab.delete(windowId);
+    chrome.tabs.remove(sourceInfo.tabId, () => {
+      if (chrome.runtime.lastError) {}
+      cleanupEmptyWindow(sourceInfo.windowId, sourceInfo.tabId);
+    });
   }
 });
 
@@ -599,6 +679,7 @@ window.addEventListener("DOMContentLoaded", (event) => {
   loadInstalledApps();
 });
 
+// Keyboard shortcut: toggle current tab between popup and normal window
 chrome.commands.onCommand.addListener((command) => {
   if (command === "popupWindow") {
     chrome.windows.getCurrent((windowInfo) => {

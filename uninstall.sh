@@ -22,4 +22,9 @@ fi
 echo "================================================================="
 echo "PWAish native host successfully uninstalled!"
 echo "================================================================="
+echo "Optional: If you installed the Zen Browser autoconfig setup, remove it via:"
+echo "  curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/PWA_for_Zen/uninstall_autoconfig.sh | sudo bash"
+echo ""
+
+
 

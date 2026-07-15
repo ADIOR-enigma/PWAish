@@ -83,6 +83,30 @@ Because `webappinst.xpi` is a standard XPI package, you can install it directly 
 
 ---
 
+### 3. Install Autoconfig for Zen Browser (`--app=URL` Support) (Optional)
+
+Zen Browser can launch true standalone, chromeless PWA windows directly via the command-line flag `--app=URL`. PWAish includes a Zen Browser autoconfig installer (`install_autoconfig.sh`) that sets up this capability seamlessly while preserving any existing `fx-autoconfig` scripts.
+
+#### Automated Installation
+
+Install directly using `curl`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/PWA_for_Zen/install_autoconfig.sh | sudo bash
+```
+
+Or from a local clone:
+
+```bash
+sudo ./PWA_for_Zen/install_autoconfig.sh
+```
+
+**How `install_autoconfig.sh` works:**
+1. **Checks `config-prefs.js`**: Verifies if `defaults/pref/config-prefs.js` exists in Zen Browser system directories (`/opt/zen-browser-bin`, `/usr/lib/zen-browser`, etc.). If not present, adds the file. If present, verifies and appends autoconfig preferences (`general.config.filename`) without overwriting your setup.
+2. **Checks `config.js`**: Verifies if `config.js` exists. If not present, creates the file with the PWAish autoconfig handler (`pwaish.cfg`). If present (e.g., you use `fx-autoconfig`), appends only the `PWAish Standalone Autoconfig Handler` code cleanly so your existing userChrome scripts and PWAish run side by side.
+
+---
+
 ## Configuration
 
 PWAish automatically detects which browser (`firefox`, `zen-browser`, `floorp`, or `librewolf`) invoked the install request and configures `.desktop` launchers to use that browser executable.
@@ -100,6 +124,8 @@ export PWAISH_BROWSER=floorp
 
 ## Uninstallation
 
+### 1. Uninstall the Native Messaging Host
+
 To remove the native messaging host and clean up installed files:
 
 ```bash
@@ -111,3 +137,27 @@ Or from a local clone:
 ```bash
 ./uninstall.sh
 ```
+
+### 2. Uninstall the Zen Browser Autoconfig Setup
+
+To remove or downgrade the PWAish autoconfig setup across Zen Browser directories:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ADIOR-enigma/PWAish/main/PWA_for_Zen/uninstall_autoconfig.sh | sudo bash
+```
+
+Or from a local clone:
+
+```bash
+sudo ./PWA_for_Zen/uninstall_autoconfig.sh
+```
+
+
+#### Uninstaller Options (`uninstall_autoconfig.sh`)
+
+When running `uninstall_autoconfig.sh`, you can choose how to handle your configuration files:
+- **`--keep-fx` (`-k`)**: **Keep original fx-autoconfig**. Preserves `config-prefs.js` and your existing `config.js`, removing ONLY the `PWAish Standalone Autoconfig Handler` code block. Ideal if you use custom `fx-autoconfig` userChrome modifications in Zen Browser.
+- **`--remove-all` (`-r`)**: **Remove whole setup**. Deletes both `config.js` and `defaults/pref/config-prefs.js` completely from Zen Browser directories.
+
+If run interactively without options, `uninstall_autoconfig.sh` presents a prompt allowing you to select whether to keep your original `fx-autoconfig` setup or remove the entire configuration.
+
