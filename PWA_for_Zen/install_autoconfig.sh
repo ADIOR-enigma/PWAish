@@ -85,15 +85,31 @@ install_to() {
     target_cfg_name=$(grep -oP 'pref\(\s*["'\''"]general\.config\.filename["'\''"]\s*,\s*["'\''"]\K[^"'\''"]+' "$config_prefs_path" 2>/dev/null || echo "config.js")
     local target_cfg_path="$dir/$target_cfg_name"
 
-    # Step 2: Check config.js; if there, add the rest of the code; if not, add the file
+    # Step 2: Check config.js; if there, update or add the code; if not, add the file
     if [ ! -f "$target_cfg_path" ]; then
         echo "  Adding → $target_cfg_path ..."
-        cp "$PWAISH_CFG_SRC" "$target_cfg_path"
+        cp -f "$PWAISH_CFG_SRC" "$target_cfg_path"
         chmod 644 "$target_cfg_path"
     else
         echo "  Existing $target_cfg_path found. Checking for PWAish autoconfig handler..."
         if grep -q "PWAish Standalone Autoconfig Handler" "$target_cfg_path"; then
-            echo "  PWAish autoconfig code already present in $target_cfg_path (skipping)."
+            echo "  Updating existing PWAish autoconfig handler in $target_cfg_path ..."
+            python3 -c '
+import sys, re
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    content = f.read()
+pattern = r"\n?// PWAish Standalone Autoconfig Handler - START.*?(?:// PWAish Standalone Autoconfig Handler - END|\b\}\)\(\);(?:\s*\n)?)"
+new_content = re.sub(pattern, "", content, flags=re.DOTALL)
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    f.write(new_content.rstrip() + "\n")
+' "$target_cfg_path"
+            if grep -q "ChromeUtils.importESModule('chrome://userchromejs/content/boot.sys.mjs')" "$target_cfg_path" && [ $(wc -l < "$target_cfg_path") -le 15 ]; then
+                cp -f "$PWAISH_CFG_SRC" "$target_cfg_path"
+                chmod 644 "$target_cfg_path"
+            else
+                echo "" >> "$target_cfg_path"
+                sed -n '/^\/\/ PWAish Standalone Autoconfig Handler - START/,$p' "$PWAISH_CFG_SRC" >> "$target_cfg_path"
+            fi
         else
             echo "  Adding PWAish autoconfig handler to existing $target_cfg_path ..."
             echo "" >> "$target_cfg_path"
@@ -137,9 +153,9 @@ else
     fi
 
     echo ""
-    echo "Installed to $INSTALLED Zen Browser instance(s)."
+    echo "Installed/updated $INSTALLED Zen Browser instance(s)."
 fi
 
 echo ""
-echo "PWAish Zen Browser autoconfig installation complete!"
+echo "PWAish Zen Browser autoconfig installation/update complete!"
 echo "Restart all Zen Browser instances for changes to take effect."

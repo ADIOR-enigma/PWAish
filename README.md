@@ -101,9 +101,13 @@ Or from a local clone:
 sudo ./PWA_for_Zen/install_autoconfig.sh
 ```
 
-**How `install_autoconfig.sh` works:**
+**How `install_autoconfig.sh` works (Install & Update):**
 1. **Checks `config-prefs.js`**: Verifies if `defaults/pref/config-prefs.js` exists in Zen Browser system directories (`/opt/zen-browser-bin`, `/usr/lib/zen-browser`, etc.). If not present, adds the file. If present, verifies and appends autoconfig preferences (`general.config.filename`) without overwriting your setup.
-2. **Checks `config.js`**: Verifies if `config.js` exists. If not present, creates the file with the PWAish autoconfig handler (`pwaish.cfg`). If present (e.g., you use `fx-autoconfig`), appends only the `PWAish Standalone Autoconfig Handler` code cleanly so your existing userChrome scripts and PWAish run side by side.
+2. **Checks `config.js`**: Verifies if `config.js` exists. If not present, creates the file with the PWAish autoconfig handler (`pwaish.cfg`). If present, it checks whether an existing `PWAish Standalone Autoconfig Handler` block is already there. If found, it cleanly replaces/updates the block with the latest version; if not, it appends the PWAish code cleanly so your existing `fx-autoconfig` scripts and PWAish run side by side.
+
+> [!TIP]
+> **Updating PWAish**: Because `install.sh` and `install_autoconfig.sh` are idempotent, you can re-run either installation script at any time to update your local files (`popupwindow_desktop.py`) or Zen Browser autoconfig setup to the latest version.
+
 
 ---
 

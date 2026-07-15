@@ -15,21 +15,27 @@ echo "Creating target directories..."
 mkdir -p "$PY_DIR" "$JSON_DIR"
 
 # Install Python script
-if [ -f "native/popupwindow_desktop.py" ]; then
-    echo "Installing popupwindow_desktop.py from local repository..."
-    cp "native/popupwindow_desktop.py" "$PY_TARGET"
+if [ -f "$PY_TARGET" ]; then
+    echo "Updating existing $PY_TARGET..."
 else
-    echo "Downloading popupwindow_desktop.py..."
+    echo "Installing $PY_TARGET..."
+fi
+if [ -f "native/popupwindow_desktop.py" ]; then
+    cp -f "native/popupwindow_desktop.py" "$PY_TARGET"
+else
     curl -fsSL "$PY_URL" -o "$PY_TARGET" || wget -qO "$PY_TARGET" "$PY_URL"
 fi
 chmod 755 "$PY_TARGET"
 
 # Install JSON manifest
-if [ -f "native/popupwindow_desktop.json" ]; then
-    echo "Installing popupwindow_desktop.json from local repository..."
-    cp "native/popupwindow_desktop.json" "$JSON_TARGET"
+if [ -f "$JSON_TARGET" ]; then
+    echo "Updating existing $JSON_TARGET..."
 else
-    echo "Downloading popupwindow_desktop.json..."
+    echo "Installing $JSON_TARGET..."
+fi
+if [ -f "native/popupwindow_desktop.json" ]; then
+    cp -f "native/popupwindow_desktop.json" "$JSON_TARGET"
+else
     curl -fsSL "$JSON_URL" -o "$JSON_TARGET" || wget -qO "$JSON_TARGET" "$JSON_URL"
 fi
 chmod 644 "$JSON_TARGET"
